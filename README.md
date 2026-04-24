@@ -184,6 +184,13 @@ cargo build --release
 cargo run -- add ./path/to/skills --yes --all
 ```
 
+## Security and privacy
+
+- **No telemetry.** The tool collects nothing and makes no background network requests.
+- **No external calls** beyond the `git clone` you explicitly request. No analytics, no registries, no update checks.
+- **Safe for private repositories.** Authentication is handled entirely by your local git config (SSH keys, credential helpers). The tool never sees or stores credentials.
+- **Safe for local skill folders.** `skills add ./path` is a pure local copy — nothing leaves your machine.
+
 ## Requirements
 
 - Rust 1.70+
