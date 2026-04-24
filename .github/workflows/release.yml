@@ -17,7 +17,7 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - run: cargo test --locked
@@ -36,7 +36,7 @@ jobs:
             arch: arm64
             cross: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
@@ -57,7 +57,7 @@ jobs:
         run: cross build --release --locked --target ${{ matrix.target }}
 
       - name: Upload binary
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: binary-${{ matrix.target }}
           path: target/${{ matrix.target }}/release/${{ env.BINARY_NAME }}
@@ -79,20 +79,20 @@ jobs:
             deb_arch: arm64
             rpm_arch: aarch64
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
 
       - name: Install packaging tools
         run: cargo install cargo-deb cargo-generate-rpm --locked
 
       - name: Download binary
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: binary-${{ matrix.target }}
-          path: target/release/
+          path: target/${{ matrix.target }}/release/
 
       - name: Make binary executable
-        run: chmod +x target/release/${{ env.BINARY_NAME }}
+        run: chmod +x target/${{ matrix.target }}/release/${{ env.BINARY_NAME }}
 
       - name: Extract version
         id: version
@@ -113,7 +113,7 @@ jobs:
             --output target/packages/${{ env.BINARY_NAME }}-${{ steps.version.outputs.version }}-1.${{ matrix.rpm_arch }}.rpm
 
       - name: Upload packages
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: packages-${{ matrix.target }}
           path: target/packages/*
@@ -124,16 +124,16 @@ jobs:
     needs: [build, package]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Download all binary artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           pattern: binary-*
           path: artifacts/binaries/
 
       - name: Download all package artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           pattern: packages-*
           path: artifacts/packages/
