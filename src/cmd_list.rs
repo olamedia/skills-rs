@@ -21,13 +21,35 @@ pub fn run_list(args: ListArgs) -> Result<(), String> {
         }
         print_global_lock(&lock, &args.agent_names);
     } else {
-        let lock = LocalLock::load(&cwd);
+        let global_lock = GlobalLock::load(&home);
+        let local_lock = LocalLock::load(&cwd);
+
         if args.json {
-            let json = serde_json::to_string_pretty(&lock).map_err(|e| format!("{e}"))?;
+            let combined = serde_json::json!({
+                "global": global_lock,
+                "project": local_lock,
+            });
+            let json = serde_json::to_string_pretty(&combined).map_err(|e| format!("{e}"))?;
             println!("{json}");
             return Ok(());
         }
-        print_local_lock(&lock, &args.agent_names);
+
+        let has_global = !global_lock.skills.is_empty();
+        let has_local = !local_lock.skills.is_empty();
+
+        if has_global {
+            print_global_lock(&global_lock, &args.agent_names);
+        }
+        if has_global && has_local {
+            eprintln!();
+        }
+        if has_local {
+            print_local_lock(&local_lock, &args.agent_names);
+        }
+        if !has_global && !has_local {
+            eprintln!("No skills installed.");
+            eprintln!("  Run {} to add skills.", "skills add <source>".cyan());
+        }
     }
 
     Ok(())

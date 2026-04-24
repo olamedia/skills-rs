@@ -12,19 +12,18 @@ Claude Code, Cursor, Codex, OpenCode, Cline, Windsurf, Roo Code, Goose, Augment,
 
 ### From GitHub releases (Linux)
 
+Download the latest `.deb`, `.rpm`, or standalone binary from the [releases page](https://github.com/olamedia/skills-rs/releases/latest).
+
 ```bash
 # Debian/Ubuntu
-curl -LO https://github.com/olamedia/skills-rs/releases/latest/download/skills_0.2.0_amd64.deb
-sudo dpkg -i skills_0.2.0_amd64.deb
+sudo dpkg -i skills_*_amd64.deb
 
 # Fedora/RHEL
-curl -LO https://github.com/olamedia/skills-rs/releases/latest/download/skills-0.2.0-1.x86_64.rpm
-sudo rpm -i skills-0.2.0-1.x86_64.rpm
+sudo rpm -i skills-*.x86_64.rpm
 
 # Standalone binary (no package manager)
-curl -LO https://github.com/olamedia/skills-rs/releases/latest/download/skills-0.2.0-linux-amd64
-chmod +x skills-0.2.0-linux-amd64
-sudo mv skills-0.2.0-linux-amd64 /usr/local/bin/skills
+chmod +x skills-*-linux-amd64
+sudo mv skills-*-linux-amd64 /usr/local/bin/skills
 ```
 
 ARM64 builds are also available — replace `amd64`/`x86_64` with `arm64`/`aarch64`.

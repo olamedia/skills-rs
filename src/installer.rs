@@ -165,7 +165,7 @@ pub fn remove_canonical(
     Ok(target)
 }
 
-fn copy_dir_recursive(src: &Path, dst: &Path) -> io::Result<()> {
+pub fn copy_dir_recursive(src: &Path, dst: &Path) -> io::Result<()> {
     fs::create_dir_all(dst)?;
     for entry in fs::read_dir(src)? {
         let entry = entry?;
