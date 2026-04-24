@@ -189,7 +189,7 @@ mod tests {
 
     #[test]
     fn test_universal_agents() {
-        let ua = universal_agents();
+        let ua: Vec<_> = AGENTS.iter().filter(|a| a.is_universal).collect();
         let names: Vec<_> = ua.iter().map(|a| a.name).collect();
         assert!(names.contains(&"cursor"));
         assert!(names.contains(&"codex"));
