@@ -147,7 +147,7 @@ Optional: `metadata.internal: true` hides the skill from default selection.
 6. **Choose scope** — "Install to home?" prompt (global vs project). Saved between sessions.
 7. **Choose method** — if home=yes, "Symlink or copy to project?" prompt. Saved between sessions.
 8. **Install** — copies to canonical location (`.agents/skills/<name>`), then symlinks (or copies) to each agent's skills directory
-9. **Lock** — records source, hash, and agent list in `.agents/skill-lock.json` (project) or `~/.agents/.skill-lock.json` (global)
+9. **Lock** — records source, hash, and agent list in `.agents/skills-lock.json` (project) or `~/.agents/.skill-lock.json` (global)
 
 All interactive choices are persisted in `~/.agents/.skill-lock.json` and used as defaults on the next run. CLI flags (`--global`, `--copy`, `--yes`) bypass the corresponding prompts.
 

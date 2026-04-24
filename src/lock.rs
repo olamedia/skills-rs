@@ -88,7 +88,7 @@ impl GlobalLock {
 // ---- Local lock: <project>/.agents/skill-lock.json ----
 
 const LOCAL_LOCK_VERSION: u32 = 1;
-const LOCAL_LOCK_FILE: &str = ".agents/skill-lock.json";
+const LOCAL_LOCK_FILE: &str = ".agents/skills-lock.json";
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
