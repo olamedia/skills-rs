@@ -1,9 +1,10 @@
 use std::io;
 
 use colored::Colorize;
-use dialoguer::{Confirm, MultiSelect};
+use dialoguer::{Confirm, MultiSelect, Select};
 
 use crate::agents::AgentConfig;
+use crate::installer::InstallMode;
 use crate::skill::Skill;
 
 pub fn is_interactive() -> bool {
@@ -26,32 +27,37 @@ pub fn select_skills(skills: &[Skill]) -> io::Result<Vec<usize>> {
         })
         .collect();
 
-    let defaults: Vec<bool> = skills.iter().map(|s| !s.is_internal).collect();
-
     let selected = MultiSelect::new()
         .with_prompt("Select skills to install")
         .items(&items)
-        .defaults(&defaults)
         .interact()
         .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
     Ok(selected)
 }
 
-pub fn select_agents(agents: &[&AgentConfig]) -> io::Result<Vec<usize>> {
+pub fn select_agents(agents: &[&AgentConfig], saved_agents: &[String]) -> io::Result<Vec<usize>> {
     if agents.is_empty() {
         return Ok(vec![]);
     }
 
     let items: Vec<String> = agents.iter().map(|a| a.display_name.to_string()).collect();
-    let defaults: Vec<bool> = vec![true; agents.len()];
+    let defaults: Vec<bool> = agents
+        .iter()
+        .map(|a| saved_agents.iter().any(|s| s == a.name))
+        .collect();
 
-    let selected = MultiSelect::new()
+    let has_saved = defaults.iter().any(|&d| d);
+    let ms = MultiSelect::new()
         .with_prompt("Select target agents")
-        .items(&items)
-        .defaults(&defaults)
-        .interact()
-        .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+        .items(&items);
+    let selected = if has_saved {
+        ms.defaults(&defaults)
+    } else {
+        ms
+    }
+    .interact()
+    .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
     Ok(selected)
 }
@@ -64,6 +70,38 @@ pub fn confirm_install(count: usize, agent_count: usize) -> io::Result<bool> {
         .default(true)
         .interact()
         .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
+}
+
+pub fn prompt_install_to_home(saved: Option<bool>) -> io::Result<bool> {
+    let c = Confirm::new()
+        .with_prompt("Install skills to home (~/.agents/skills/)?");
+    let c = match saved {
+        Some(v) => c.default(v),
+        None => c,
+    };
+    c.interact()
+        .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
+}
+
+pub fn prompt_install_mode(saved: Option<&str>) -> io::Result<InstallMode> {
+    let items = &["Symlink (recommended)", "Copy"];
+    let default_idx = match saved {
+        Some("copy") => 1,
+        _ => 0,
+    };
+
+    let selection = Select::new()
+        .with_prompt("Installation method for project")
+        .items(items)
+        .default(default_idx)
+        .interact()
+        .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+
+    Ok(if selection == 0 {
+        InstallMode::Symlink
+    } else {
+        InstallMode::Copy
+    })
 }
 
 pub fn print_skill_list(skills: &[Skill]) {

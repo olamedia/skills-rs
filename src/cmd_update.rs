@@ -7,6 +7,7 @@ pub struct UpdateArgs {
     pub skills: Vec<String>,
     pub global: bool,
     pub project: bool,
+    #[allow(dead_code)]
     pub yes: bool,
 }
 

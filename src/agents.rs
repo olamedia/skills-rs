@@ -143,14 +143,6 @@ pub fn find_agent(name: &str) -> Option<&'static AgentConfig> {
     AGENTS.iter().find(|a| a.name == name)
 }
 
-pub fn all_agent_names() -> Vec<&'static str> {
-    AGENTS.iter().map(|a| a.name).collect()
-}
-
-pub fn universal_agents() -> Vec<&'static AgentConfig> {
-    AGENTS.iter().filter(|a| a.is_universal).collect()
-}
-
 pub fn canonical_skills_dir(global: bool, home: &Path, cwd: &Path) -> PathBuf {
     let base = if global { home } else { cwd };
     base.join(CANONICAL_SKILLS_DIR)

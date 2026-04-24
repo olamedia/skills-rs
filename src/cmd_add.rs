@@ -7,10 +7,11 @@ use crate::discover::{discover_skills, filter_skills_by_name};
 use crate::git::{cleanup_clone_dir, clone_repo};
 use crate::installer::{install_skill, InstallMode};
 use crate::lock::{
-    hash_skill_dir, now_iso, GlobalLock, GlobalLockEntry, LocalLock, LocalLockEntry,
+    hash_skill_dir, now_iso, GlobalLock, GlobalLockEntry, LocalLock, LocalLockEntry, Preferences,
 };
 use crate::prompt::{
-    confirm_install, is_interactive, print_skill_list, select_agents, select_skills,
+    confirm_install, is_interactive, print_skill_list, prompt_install_mode,
+    prompt_install_to_home, select_agents, select_skills,
 };
 use crate::source::{parse_source, SourceType};
 
@@ -78,7 +79,15 @@ fn run_add_inner(
         return Ok(());
     }
 
-    // Filter from CLI flag, source fragment, or prompt
+    let home = dirs::home_dir().ok_or("Cannot determine home directory")?;
+    let cwd = std::env::current_dir().map_err(|e| format!("{e}"))?;
+    let interactive = is_interactive() && !args.yes;
+
+    // Load saved preferences
+    let global_lock = GlobalLock::load(&home);
+    let prefs = global_lock.load_preferences();
+
+    // ---- Step 1: Select skills ----
     let skill_filter: Vec<String> = if !args.skill_names.is_empty() {
         args.skill_names.clone()
     } else if let Some(ref f) = parsed.skill_filter {
@@ -100,7 +109,7 @@ fn run_add_inner(
         filtered
     } else if all_skills.len() == 1 {
         vec![&all_skills[0]]
-    } else if is_interactive() && !args.yes {
+    } else if interactive {
         let indices = select_skills(&all_skills).map_err(|e| format!("{e}"))?;
         if indices.is_empty() {
             eprintln!("No skills selected.");
@@ -118,16 +127,15 @@ fn run_add_inner(
         return Err("No skills selected.".into());
     }
 
-    // Resolve agents
-    let home = dirs::home_dir().ok_or("Cannot determine home directory")?;
-    let cwd = std::env::current_dir().map_err(|e| format!("{e}"))?;
+    // ---- Step 2: Select agents ----
+    let saved_agents = prefs.last_selected_agents.clone().unwrap_or_default();
 
     let agents: Vec<_> = if !args.agent_names.is_empty() {
         args.agent_names
             .iter()
             .filter_map(|n| find_agent(n))
             .collect()
-    } else if args.all || args.yes || !is_interactive() {
+    } else if args.all || !interactive {
         if args.global {
             detect_installed_agents(&home)
         } else {
@@ -144,7 +152,7 @@ fn run_add_inner(
             return Err("No agents detected. Specify agents with --agent.".into());
         }
 
-        let indices = select_agents(&detected).map_err(|e| format!("{e}"))?;
+        let indices = select_agents(&detected, &saved_agents).map_err(|e| format!("{e}"))?;
         if indices.is_empty() {
             eprintln!("No agents selected.");
             return Ok(());
@@ -156,7 +164,44 @@ fn run_add_inner(
         return Err("No agents selected.".into());
     }
 
-    // Confirmation
+    // ---- Step 3: "Install to home?" prompt ----
+    let install_to_home = if args.global {
+        true
+    } else if interactive {
+        prompt_install_to_home(prefs.last_install_to_home).map_err(|e| format!("{e}"))?
+    } else {
+        false
+    };
+
+    // ---- Step 4: "Symlink or copy?" prompt (only if home=yes) ----
+    let mode = if args.copy {
+        InstallMode::Copy
+    } else if install_to_home && interactive {
+        prompt_install_mode(prefs.last_install_mode.as_deref()).map_err(|e| format!("{e}"))?
+    } else if install_to_home {
+        InstallMode::Symlink
+    } else {
+        InstallMode::Copy
+    };
+
+    // ---- Save preferences (interactive runs only) ----
+    if interactive {
+        let agent_names: Vec<String> = agents.iter().map(|a| a.name.to_string()).collect();
+        let mode_str = match mode {
+            InstallMode::Symlink => "symlink",
+            InstallMode::Copy => "copy",
+        };
+        let new_prefs = Preferences {
+            last_install_to_home: Some(install_to_home),
+            last_install_mode: Some(mode_str.to_string()),
+            last_selected_agents: Some(agent_names),
+        };
+        let mut lock = GlobalLock::load(&home);
+        lock.save_preferences(new_prefs);
+        lock.save(&home).map_err(|e| format!("{e}"))?;
+    }
+
+    // ---- Confirmation ----
     let auto_yes = args.yes || args.all;
     if !auto_yes && is_interactive() {
         if !confirm_install(selected_skills.len(), agents.len()).map_err(|e| format!("{e}"))? {
@@ -165,23 +210,19 @@ fn run_add_inner(
         }
     }
 
-    let mode = if args.copy {
-        InstallMode::Copy
-    } else {
-        InstallMode::Symlink
-    };
-
-    // Install + update lock
+    // ---- Install + update lock ----
+    let use_global = install_to_home;
     let mut installed_count = 0;
 
     for skill in &selected_skills {
-        let results = install_skill(skill, &agents, mode, args.global, &home, &cwd)
+        let results = install_skill(skill, &agents, mode, use_global, &home, &cwd)
             .map_err(|e| format!("{e}"))?;
 
         let hash = hash_skill_dir(&skill.path).ok();
-        let agent_names: Vec<String> = results.iter().map(|r| r.agent_name.clone()).collect();
+        let result_agent_names: Vec<String> =
+            results.iter().map(|r| r.agent_name.clone()).collect();
 
-        if args.global {
+        if use_global {
             let mut lock = GlobalLock::load(&home);
             lock.upsert(
                 &skill.name,
@@ -190,7 +231,7 @@ fn run_add_inner(
                     skill_name: skill.name.clone(),
                     installed_at: now_iso(),
                     skill_folder_hash: hash.clone(),
-                    agents: agent_names.clone(),
+                    agents: result_agent_names.clone(),
                 },
             );
             lock.save(&home).map_err(|e| format!("{e}"))?;
@@ -203,7 +244,7 @@ fn run_add_inner(
                     skill_name: skill.name.clone(),
                     installed_at: now_iso(),
                     computed_hash: hash.clone(),
-                    agents: agent_names.clone(),
+                    agents: result_agent_names.clone(),
                 },
             );
             lock.save(&cwd).map_err(|e| format!("{e}"))?;

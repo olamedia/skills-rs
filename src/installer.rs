@@ -17,6 +17,7 @@ pub struct InstallResult {
     pub skill_name: String,
     pub agent_name: String,
     pub dest: PathBuf,
+    #[allow(dead_code)]
     pub mode: InstallMode,
 }
 

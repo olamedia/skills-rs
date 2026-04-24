@@ -11,11 +11,24 @@ use sha2::{Digest, Sha256};
 const GLOBAL_LOCK_VERSION: u32 = 3;
 const GLOBAL_LOCK_FILE: &str = ".agents/.skill-lock.json";
 
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Preferences {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_install_to_home: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_install_mode: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_selected_agents: Option<Vec<String>>,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GlobalLock {
     pub version: u32,
     pub skills: HashMap<String, GlobalLockEntry>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub preferences: Option<Preferences>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -51,6 +64,7 @@ impl GlobalLock {
         Self {
             version: GLOBAL_LOCK_VERSION,
             skills: HashMap::new(),
+            preferences: None,
         }
     }
 
@@ -60,6 +74,14 @@ impl GlobalLock {
 
     pub fn remove(&mut self, key: &str) -> bool {
         self.skills.remove(key).is_some()
+    }
+
+    pub fn load_preferences(&self) -> Preferences {
+        self.preferences.clone().unwrap_or_default()
+    }
+
+    pub fn save_preferences(&mut self, prefs: Preferences) {
+        self.preferences = Some(prefs);
     }
 }
 
@@ -268,5 +290,53 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let hash = hash_skill_dir(tmp.path()).unwrap();
         assert!(!hash.is_empty());
+    }
+
+    #[test]
+    fn test_preferences_roundtrip() {
+        let tmp = tempfile::tempdir().unwrap();
+        let mut lock = GlobalLock::empty();
+        lock.save_preferences(Preferences {
+            last_install_to_home: Some(true),
+            last_install_mode: Some("symlink".into()),
+            last_selected_agents: Some(vec!["cursor".into(), "claude-code".into()]),
+        });
+        lock.save(tmp.path()).unwrap();
+
+        let loaded = GlobalLock::load(tmp.path());
+        let prefs = loaded.load_preferences();
+        assert_eq!(prefs.last_install_to_home, Some(true));
+        assert_eq!(prefs.last_install_mode.as_deref(), Some("symlink"));
+        assert_eq!(
+            prefs.last_selected_agents,
+            Some(vec!["cursor".into(), "claude-code".into()])
+        );
+    }
+
+    #[test]
+    fn test_preferences_missing_returns_defaults() {
+        let tmp = tempfile::tempdir().unwrap();
+        let lock = GlobalLock::empty();
+        lock.save(tmp.path()).unwrap();
+
+        let loaded = GlobalLock::load(tmp.path());
+        let prefs = loaded.load_preferences();
+        assert_eq!(prefs.last_install_to_home, None);
+        assert_eq!(prefs.last_install_mode, None);
+        assert_eq!(prefs.last_selected_agents, None);
+    }
+
+    #[test]
+    fn test_old_lock_without_preferences_field() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path().join(GLOBAL_LOCK_FILE);
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(&path, r#"{"version":3,"skills":{}}"#).unwrap();
+
+        let loaded = GlobalLock::load(tmp.path());
+        assert_eq!(loaded.version, 3);
+        assert!(loaded.preferences.is_none());
+        let prefs = loaded.load_preferences();
+        assert_eq!(prefs.last_install_to_home, None);
     }
 }
