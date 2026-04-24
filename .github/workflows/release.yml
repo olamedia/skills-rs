@@ -109,7 +109,7 @@ jobs:
         run: |
           cargo generate-rpm \
             --target ${{ matrix.target }} \
-            --set-metadata="version=${{ steps.version.outputs.version }}" \
+            --set-metadata='version="${{ steps.version.outputs.version }}"' \
             --output target/packages/${{ env.BINARY_NAME }}-${{ steps.version.outputs.version }}-1.${{ matrix.rpm_arch }}.rpm
 
       - name: Upload packages
