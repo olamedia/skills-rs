@@ -14,17 +14,17 @@ Claude Code, Cursor, Codex, OpenCode, Cline, Windsurf, Roo Code, Goose, Augment,
 
 ```bash
 # Debian/Ubuntu
-curl -LO https://github.com/olamedia/skills-rs/releases/latest/download/skills_0.1.0_amd64.deb
-sudo dpkg -i skills_0.1.0_amd64.deb
+curl -LO https://github.com/olamedia/skills-rs/releases/latest/download/skills_0.2.0_amd64.deb
+sudo dpkg -i skills_0.2.0_amd64.deb
 
 # Fedora/RHEL
-curl -LO https://github.com/olamedia/skills-rs/releases/latest/download/skills-0.1.0-1.x86_64.rpm
-sudo rpm -i skills-0.1.0-1.x86_64.rpm
+curl -LO https://github.com/olamedia/skills-rs/releases/latest/download/skills-0.2.0-1.x86_64.rpm
+sudo rpm -i skills-0.2.0-1.x86_64.rpm
 
 # Standalone binary (no package manager)
-curl -LO https://github.com/olamedia/skills-rs/releases/latest/download/skills-0.1.0-linux-amd64
-chmod +x skills-0.1.0-linux-amd64
-sudo mv skills-0.1.0-linux-amd64 /usr/local/bin/skills
+curl -LO https://github.com/olamedia/skills-rs/releases/latest/download/skills-0.2.0-linux-amd64
+chmod +x skills-0.2.0-linux-amd64
+sudo mv skills-0.2.0-linux-amd64 /usr/local/bin/skills
 ```
 
 ARM64 builds are also available — replace `amd64`/`x86_64` with `arm64`/`aarch64`.
@@ -143,9 +143,14 @@ Optional: `metadata.internal: true` hides the skill from default selection.
 1. **Parse source** — GitHub shorthand, URLs, SSH, GitLab, local paths
 2. **Fetch** — shallow `git clone --depth 1` for remote sources
 3. **Discover** — scans priority directories (`skills/`, `.agents/skills/`, agent-specific dirs), falls back to recursive search
-4. **Select** — interactive prompt or CLI filters (`--skill`, `--all`, `@skill`)
-5. **Install** — copies to canonical location (`.agents/skills/<name>`), then symlinks (or copies with `--copy`) to each agent's skills directory
-6. **Lock** — records source, hash, and agent list in `skills-lock.json` (project) or `~/.agents/.skill-lock.json` (global)
+4. **Select skills** — interactive multi-select (all unchecked by default) or CLI filters (`--skill`, `--all`, `@skill`)
+5. **Select agents** — interactive multi-select with saved preferences from previous runs
+6. **Choose scope** — "Install to home?" prompt (global vs project). Saved between sessions.
+7. **Choose method** — if home=yes, "Symlink or copy to project?" prompt. Saved between sessions.
+8. **Install** — copies to canonical location (`.agents/skills/<name>`), then symlinks (or copies) to each agent's skills directory
+9. **Lock** — records source, hash, and agent list in `.agents/skill-lock.json` (project) or `~/.agents/.skill-lock.json` (global)
+
+All interactive choices are persisted in `~/.agents/.skill-lock.json` and used as defaults on the next run. CLI flags (`--global`, `--copy`, `--yes`) bypass the corresponding prompts.
 
 ## Project structure
 

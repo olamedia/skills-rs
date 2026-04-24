@@ -85,10 +85,10 @@ impl GlobalLock {
     }
 }
 
-// ---- Local lock: <project>/skills-lock.json ----
+// ---- Local lock: <project>/.agents/skill-lock.json ----
 
 const LOCAL_LOCK_VERSION: u32 = 1;
-const LOCAL_LOCK_FILE: &str = "skills-lock.json";
+const LOCAL_LOCK_FILE: &str = ".agents/skill-lock.json";
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -119,6 +119,9 @@ impl LocalLock {
 
     pub fn save(&self, cwd: &Path) -> io::Result<()> {
         let path = cwd.join(LOCAL_LOCK_FILE);
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)?;
+        }
         let json = serde_json::to_string_pretty(self)?;
         fs::write(&path, json)
     }
